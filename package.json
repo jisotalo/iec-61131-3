@@ -1,6 +1,6 @@
 {
   "name": "iec-61131-3",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "IEC 61131-3 data types",
   "main": "./dist/iec-61131-3.js",
   "scripts": {
@@ -20,7 +20,7 @@
   ],
   "author": "Jussi Isotalo <j.isotalo91@gmail.com> (https://github.com/jisotalo)",
   "license": "MIT",
-  "homepage": "https://jisotalo.github.io/iec-61131-3/",
+  "homepage": "https://github.com/jisotalo/iec-61131-3/",
   "bugs": {
     "url": "https://github.com/jisotalo/iec-61131-3/issues"
   },

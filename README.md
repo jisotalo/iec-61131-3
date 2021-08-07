@@ -19,9 +19,12 @@ Things to do
 
 
 # Table of contents
+- [Table of contents](#table-of-contents)
 - [Installing](#installing)
-- [Using the library](#using-the-library)
+- [IMPORTANT NOTE](#important-note)
+- [Simple example](#simple-example)
 - [License](#license)
+
 
 # Installing
 Install the [npm package](https://www.npmjs.com/package/iec-61131-3) using npm command:
@@ -29,8 +32,109 @@ Install the [npm package](https://www.npmjs.com/package/iec-61131-3) using npm c
 npm i iec-61131-3
 ```
 
-# Using the library
-To be done.
+# IMPORTANT NOTE
+At the moment, the PLC data has to be saved in **pack-mode 1** so there will be no padding bytes.
+
+In CODESYS based systems (TwinCAT etc.), add the following above `STRUCT` definitions:
+
+`{attribute 'pack_mode' := '1'}`
+
+# Simple example
+
+**Note:** This example does not care how to data is written or read. It's left out of this example.
+
+
+The PLC struct definitions are as follows:
+```
+{attribute 'pack_mode' := '1'}
+TYPE ST_IEC_Example :
+STRUCT
+	Text 		: STRING(50) := 'Hello iec-61131-3 helper';
+	Decimal 	: REAL := 3.14159265359;
+	ArrayData	: ARRAY[0..9] OF INT := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+	StructData	: ST_IEC_Example2;
+END_STRUCT
+END_TYPE
+```
+```
+{attribute 'pack_mode' := '1'}
+TYPE ST_IEC_Example2 :
+STRUCT
+	Text 		: STRING(50) := 'Cheers from second struct';
+END_STRUCT
+END_TYPE
+
+```
+
+Javascript code:
+```js
+const iec = require('iec-61131-3')
+
+//Creating a IEC data type schema matchin PLC datatype ST_Example
+const ST_Example = iec.STRUCT({
+  Text: iec.STRING(50),
+  Decimal: iec.REAL,
+  ArrayData: iec.ARRAY(iec.INT, 10),
+  StructData: iec.STRUCT({
+    Text: iec.STRING(50),
+  })
+})
+
+//Creating a default empty object from it
+const obj = ST_Example.getDefault()
+console.log(obj)
+/*
+  {
+    Text: '',
+    Decimal: 0,
+    ArrayData: [
+      0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0
+    ],
+    StructData: { Text: '' }
+  }
+*/
+
+//Changing some values
+obj.Text = 'Whats up?'
+obj.ArrayData[5] = 123
+obj.StructData.Text = 'Hello'
+
+console.log(obj)
+/*
+  {
+    Text: 'Whats up?',
+    Decimal: 0,
+    ArrayData: [
+        0, 0, 0, 0, 0,
+      123, 0, 0, 0, 0
+    ],
+    StructData: { Text: 'Hello' }
+  }
+*/
+
+//Creating raw binary Buffer data
+const buffer = ST_Example.convertToBuffer(obj)
+console.log(buffer)
+/*
+  <Buffer 57 68 61 74 73 20 75 70 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ... 76 more bytes>
+*/
+
+//Converting back to Javascript object
+const converted = ST_Example.convertFromBuffer(buffer)
+console.log(converted)
+/*
+  {
+    Text: 'Whats up?',
+    Decimal: 0,
+    ArrayData: [
+        0, 0, 0, 0, 0,
+      123, 0, 0, 0, 0
+    ],
+    StructData: { Text: 'Hello' }
+  }
+*/
+```
 
 # License
 

@@ -47,6 +47,9 @@ abstract class TypeBase implements Partial<IecType> {
  */
 export class STRUCT extends TypeBase implements IecType {
   type = 'STRUCT'
+  /**
+   * STRUCT children data types
+   */
   children: StructChildren
 
   constructor(children: StructChildren) {
