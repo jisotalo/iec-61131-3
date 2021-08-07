@@ -19,7 +19,6 @@ Things to do
 
 
 # Table of contents
-- [Table of contents](#table-of-contents)
 - [Installing](#installing)
 - [IMPORTANT NOTE](#important-note)
 - [Simple example](#simple-example)
