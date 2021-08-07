@@ -12,6 +12,8 @@ Inspiration from [iecstruct](https://www.npmjs.com/package/iecstruct) project, h
 # Project status
 
 Things to do
+- Adding more examples
+- Using this library with CODESYS systems
 - Adding automatic conversion from PLC code
 - Adding supports for different pack-modes (now only pack-mode 1)
 - Adding checks if Node.js version has BigInt support
