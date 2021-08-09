@@ -29,6 +29,8 @@ import type {
 
 import * as types from './iec-types'
 
+import util from 'util'
+
 /**
  * IEC 61131-3 type: STRUCT
  * Provide struct children as object
@@ -174,3 +176,198 @@ export const LWORD = new types.LWORD()
 export const LINT = new types.LINT()
 
 
+const availableTypes = [/*
+  STRUCT,
+  ARRAY,
+  STRING,
+  WSTRING,*/
+  BOOL,
+  USINT,
+  BYTE,
+  SINT,
+  UINT,
+  WORD,
+  INT,
+  DINT,
+  UDINT,
+  DWORD,
+  TIME,
+  TOD,
+  TIME_OF_DAY,
+  DT,
+  DATE_AND_TIME,
+  DATE,
+  REAL,
+  LREAL,
+  ULINT,
+  LWORD,
+  LINT
+]
+
+
+
+
+export const fromString = (declaration: string, topLevelType?: string, providedTypes?: Record<string, IecType>): IecType => {
+
+  const regEx = new RegExp(/type\s*(\w*)\s*:(.*?)end_type/gis)
+
+  const parsed = []
+
+  let match
+  while ((match = regEx.exec(declaration)) !== null) {
+    // This is necessary to avoid infinite loops with zero-width matches
+    if (match.index === regEx.lastIndex) {
+      regEx.lastIndex++;
+    }
+
+    const res = {
+      dataType: match[1],
+      children: parseVariables(match[2]),
+      resolved: null,
+      resolvers: [] as Array<() => void>
+    }
+
+    parsed.push(res)
+  }
+
+  //Converting to IEC types
+  if (!topLevelType && parsed.length > 1) {
+    throw new Error('Top level data type name (topLevelType) is not given and many struct declarations found. Not possible to guess.')
+
+  } else if (!topLevelType) {
+    topLevelType = parsed[0].dataType
+  }
+/*
+  console.log(topLevelType)
+  
+  console.log(util.inspect(parsed, undefined, 999))
+*/
+  const stringRegEx = new RegExp('^(STRING|WSTRING)([\\[\\(](.*?)[\\)\\]])*$', 'i')
+  const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)\s*\.\.\s*(.*?)[\])]\s*of\s*([^:;]*)/gis)
+
+  for (const type of parsed) {
+    const obj = {} as Record<string, IecType>
+    
+    for (const child of type.children) {
+
+
+      //Simple data type
+      let type = availableTypes.find(t => t.type.toLowerCase() === child.dataType.toLowerCase())
+
+      if (type) {
+        obj[child.name] = type
+        continue
+      }
+
+
+      //String or wstring
+      const stringMatch = stringRegEx.exec(child.dataType)//child.dataType.match(stringRegEx)
+      if (stringMatch) {
+        //console.log('string', stringMatch)
+        if (stringMatch[1].toLowerCase() === 'string') {
+          obj[child.name] = STRING(stringMatch[3] ? parseInt(stringMatch[3]) : 80)
+
+        } else if (stringMatch[1].toLowerCase() === 'wstring') {
+          obj[child.name] = WSTRING(stringMatch[3] ? parseInt(stringMatch[3]) : 80)
+        }
+        continue
+      }
+
+      //console.log('not regular', child.dataType)
+
+      //Array
+      const arrayMatch = arrayRegEx.exec(child.dataType)
+      if (arrayMatch) {
+        //console.log('array', arrayMatch)
+        
+        //Todo: Array of structs etc, strings etc.
+        type = availableTypes.find(t => t.type.toLowerCase() === arrayMatch[3].toLowerCase())
+
+        if (!type) {
+          throw new Error(`Unknown array subtype ${arrayMatch[3]}`)
+        }
+
+        //console.log(arrayMatch)
+
+        obj[child.name] = ARRAY(type, parseInt(arrayMatch[2]) - parseInt(arrayMatch[1]) + 1)
+        continue
+      }
+
+
+      //Struct (or unknown)
+      const struct = parsed.find(p => p.dataType.toLowerCase() == child.dataType.toLowerCase())
+
+      if (struct) {
+        if (struct.resolved) {
+          obj[child.name] = struct.resolved
+
+        } else {
+          //To be resolved later (struct not parsed yet), add resolver callback
+          struct.resolvers.push(() => {
+            obj[child.name] = STRUCT(struct.resolved)
+          })
+        }
+        
+      } else {
+        //Are there any types provided?
+        if (providedTypes) {
+          const key = Object.keys(providedTypes).find(key => key.toLowerCase() === child.dataType.toLowerCase())
+
+          if (key) {
+            obj[child.name] = providedTypes[key]
+          } else {
+            throw new Error(`Unknown subtype ${child.dataType} - Is data type declaration provided? Types found: ${parsed.map(p => p.dataType).join(', ')}, types provided: ${Object.keys(providedTypes).join(',')}`)
+          }
+          
+        } else {
+          throw new Error(`Unknown subtype ${child.dataType} - Is data type declaration provided? Types found: ${parsed.map(p => p.dataType).join(', ')}`)
+        }
+      }
+    }
+
+    //console.log(`Object now resolved:`, obj)
+
+    type.resolved = obj
+    type.resolvers.forEach(resolver => resolver())
+    type.resolvers = []
+
+  }
+
+  const final = parsed.find(p => p.dataType.toLowerCase() === topLevelType?.toLowerCase())
+
+  if (!final) {
+    throw new Error(`Top-level type ${topLevelType} was not found - Is data type declaration provided? Types found: ${parsed.map(p=>p.dataType).join(', ')}`)
+  }
+
+  return STRUCT(final.resolved)
+}
+
+
+
+
+
+const parseVariables = (declaration: string) => {
+  const regEx = new RegExp(/(\w+)\s*:\s*([^:;]*)/gis)
+
+  const parsed = []
+
+  //console.log(declaration)
+  let match
+  while ((match = regEx.exec(declaration)) !== null) {
+    // This is necessary to avoid infinite loops with zero-width matches
+    if (match.index === regEx.lastIndex) {
+      regEx.lastIndex++;
+    }
+
+    const res = {
+      name: match[1],
+      dataType: match[2].trim()
+    }
+
+    parsed.push(res)
+  }
+
+  return parsed
+
+}
+ 

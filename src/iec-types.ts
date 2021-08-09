@@ -54,7 +54,7 @@ export class STRUCT extends TypeBase implements IecType {
 
   constructor(children: StructChildren) {
     super()
-
+    
     this.children = children
 
     //Calculating struct size
