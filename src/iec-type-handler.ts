@@ -146,36 +146,78 @@ export class ARRAY extends TypeBase implements IecType {
     const buffer = Buffer.alloc(this.byteLength)
     let pos = 0
 
-    for (let i = 0; i < data.length; i++) {
-      const converted = this.dataType.convertToBuffer(data[i])
+    //Recursive handling of array dimensions
+    //Loops dimensions until we found the last one and then reads the data
+    const parseArray = (data: unknown[], arrayDimension: number): void => {
+      
+      for (let dimension = 0; dimension < this.dimensions[arrayDimension]; dimension++) {
+        if (this.dimensions[arrayDimension + 1]) {
+          //More dimensions available -> go deeper
+          parseArray(data[dimension] as unknown[], arrayDimension + 1)
 
-      converted.copy(buffer, pos)
-      pos += converted.byteLength
+        } else {
+          //This is the final dimension -> we have actual data
+          const converted = this.dataType.convertToBuffer(data[dimension])
+          converted.copy(buffer, pos)
+          pos += converted.byteLength
+        }
+      }
     }
+
+    //Start from 1st dimension
+    parseArray(data, 0)
 
     return buffer
   }
 
   convertFromBuffer(data: Buffer): unknown[] {
-    const arr = [] as Array<unknown>
     let pos = 0
 
-    for (let i = 0; i < this.totalSize; i++) {
-      arr.push(this.dataType.convertFromBuffer(data.slice(pos, pos + this.dataType.byteLength)))
-      pos += this.dataType.byteLength
+    //Recursive handling of array dimensions
+    //Loops dimensions until we found the last one and then fills with data
+    const parseArray = (arrayDimension: number): unknown[] => {
+      const result = []
+
+      for (let dimension = 0; dimension < this.dimensions[arrayDimension]; dimension++) {
+        if (this.dimensions[arrayDimension + 1]) {
+          //More dimensions available -> go deeper
+          result.push(parseArray(arrayDimension + 1))
+
+        } else {
+          //This is the final dimension -> we have actual data
+          result.push(this.dataType.convertFromBuffer(data.slice(pos, pos + this.dataType.byteLength)))
+          pos += this.dataType.byteLength
+        }
+      }
+      return result
     }
 
-    return arr 
+    //Start from 1st dimension
+    return parseArray(0)
   }
 
   getDefault(): unknown[] {
-    const arr = [] as Array<unknown>
 
-    for (let i = 0; i < this.totalSize; i++) {
-      arr.push(this.dataType.getDefault())
+    //Recursive parsing of array dimensions
+    //Loops dimensions until we found the last one and then fills with data
+    const parseArray = (arrayDimension: number): unknown[] => {
+      const result = []
+
+      for (let dimension = 0; dimension < this.dimensions[arrayDimension]; dimension++) {
+        if (this.dimensions[arrayDimension + 1]) {
+          //More dimensions available -> go deeper
+          result.push(parseArray(arrayDimension + 1))
+
+        } else {
+          //This is the final dimension -> we have actual data
+          result.push(this.dataType.getDefault())
+        }
+      }
+      return result
     }
 
-    return arr
+    //Start from 1st dimension
+    return parseArray(0)
   }
 }
 

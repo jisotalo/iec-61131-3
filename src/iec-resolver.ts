@@ -83,10 +83,10 @@ const structVariableRegEx = new RegExp(/(\w+)\s*:\s*([^:;]*)/gis)
  */
 const stringRegEx = new RegExp('^(STRING|WSTRING)([\\[\\(](.*?)[\\)\\]])*$', 'i')
 
+
 /**
  * RegExp pattern for matching ARRAY types
  */
-//const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)\s*\.\.\s*(.*?)[\])]\s*of\s*([^:;]*)/gis)
 const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)[\])]\s*of\s*([^:;]*)/gis)
 
 
@@ -105,24 +105,25 @@ const extractStructDeclarations = (declarations: string): ExtractedStruct[] => {
 
   const extractedStructs: ExtractedStruct[] = []
   let match: RegExpExecArray | null
+  const typeMatcher = new RegExp(typeRegEx)
   
   //Looping until all no more declarations found
   //TODO: Add checks if RegExp was successful
-  while ((match = typeRegEx.exec(declarations)) !== null) {
+  while ((match = typeMatcher.exec(declarations)) !== null) {
 
     // This is necessary to avoid infinite loops with zero-width matches
-    if (match.index === typeRegEx.lastIndex) {
-      typeRegEx.lastIndex++;
+    if (match.index === typeMatcher.lastIndex) {
+      typeMatcher.lastIndex++;
     }
 
     //Creating new temporary extracted struct object
     extractedStructs.push({
       dataType: match[1],
       children: extractStructVariables(match[2]),
-      resolved: undefined,
-      resolvers: []
+      resolved: undefined
     })
   }
+
 
   return extractedStructs
 }
@@ -139,13 +140,14 @@ const extractStructVariables = (declaration: string): ExtractedStructVariable[] 
   const extractedVariables: ExtractedStructVariable[] = []
 
   let match: RegExpExecArray | null
+  const structVariableMatcher = new RegExp(structVariableRegEx)
 
   //TODO: Add checks if RegExp was successful
-  while ((match = structVariableRegEx.exec(declaration)) !== null) {
+  while ((match = structVariableMatcher.exec(declaration)) !== null) {
 
     // This is necessary to avoid infinite loops with zero-width matches
-    if (match.index === structVariableRegEx.lastIndex) {
-      structVariableRegEx.lastIndex++
+    if (match.index === structVariableMatcher.lastIndex) {
+      structVariableMatcher.lastIndex++
     }
 
     extractedVariables.push({
@@ -240,7 +242,8 @@ const resolveIecVariable = (dataType: string, structs: ExtractedStruct[], provid
 
   //String or wstring
   //TODO: Add checks if RegExp was successful
-  const stringMatch = stringRegEx.exec(dataType)
+  const stringMatcher = new RegExp(stringRegEx)
+  const stringMatch = stringMatcher.exec(dataType)
 
   if (stringMatch) {
     if (stringMatch[1].toLowerCase() === 'string') {
@@ -256,10 +259,10 @@ const resolveIecVariable = (dataType: string, structs: ExtractedStruct[], provid
   
   //Array
   //TODO: Add checks if RegExp was successful
-  const arrayMatch = arrayRegEx.exec(dataType)
+  const arrayMatcher = new RegExp(arrayRegEx)
+  const arrayMatch = arrayMatcher.exec(dataType)
 
   if (arrayMatch) {
-    console.log(arrayMatch)
     type = resolveIecVariable(arrayMatch[2], structs, providedTypes)
   
     if (!type) {
@@ -271,17 +274,18 @@ const resolveIecVariable = (dataType: string, structs: ExtractedStruct[], provid
     const dimensions = []
     
     let match: RegExpExecArray | null
+    const arrayDimensionsMatcher = new RegExp(arrayDimensionsRegEx)
+    
     //TODO: Add checks if RegExp was successful
-    while ((match = arrayDimensionsRegEx.exec(arrayMatch[1])) !== null) {
+    while ((match = arrayDimensionsMatcher.exec(arrayMatch[1])) !== null) {
       // This is necessary to avoid infinite loops with zero-width matches
-      if (match.index === arrayDimensionsRegEx.lastIndex) {
-        arrayDimensionsRegEx.lastIndex++
+      if (match.index === arrayDimensionsMatcher.lastIndex) {
+        arrayDimensionsMatcher.lastIndex++
       }
-      
+
       dimensions.push(parseInt(match[2]) - parseInt(match[1]) + 1)
     }
     return types.ARRAY(type, dimensions)
-    //return types.ARRAY(type, )
   }
 
 

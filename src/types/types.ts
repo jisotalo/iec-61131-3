@@ -81,12 +81,6 @@ export interface ExtractedStruct {
    * Note: This might be undefined if data type is not yet resolved (like struct that contains structs)
    */
   resolved?: Record<string, IecType>,
-
-  /**
-   * Callbacks that should be called after this struct is resolved completely (all children are resolved)
-   * Reason: If multiple structs, we can resolve all only when everything has been extracted.
-   */
-  resolvers: Array<() => void>
 }
 
 
