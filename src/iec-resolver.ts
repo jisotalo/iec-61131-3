@@ -1,5 +1,62 @@
-import { nonComplexTypes, ARRAY, STRING, STRUCT, WSTRING } from "./iec-61131-3"
+/*
+https://github.com/jisotalo/iec-61131-3
+
+Copyright (c) 2021 Jussi Isotalo <j.isotalo91@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+
+
+import * as types from "./iec-types"
+
 import { ExtractedStruct, ExtractedStructVariable, IecType } from "./types/types"
+
+
+/**
+ * Available non-complex IEC types
+ */
+const nonComplexTypes = [
+  types.BOOL,
+  types.USINT,
+  types.BYTE,
+  types.SINT,
+  types.UINT,
+  types.WORD,
+  types.INT,
+  types.DINT,
+  types.UDINT,
+  types.DWORD,
+  types.TIME,
+  types.TOD,
+  types.TIME_OF_DAY,
+  types.DT,
+  types.DATE_AND_TIME,
+  types.DATE,
+  types.REAL,
+  types.LREAL,
+  types.ULINT,
+  types.LWORD,
+  types.LINT
+]
+
+
 
 /**
  * RegExp pattern for matching TYPEs like STRUCT etc.
@@ -42,6 +99,7 @@ const extractStructDeclarations = (declarations: string): ExtractedStruct[] => {
   let match: RegExpExecArray | null
   
   //Looping until all no more declarations found
+  //TODO: Add checks if RegExp was successful
   while ((match = typeRegEx.exec(declarations)) !== null) {
 
     // This is necessary to avoid infinite loops with zero-width matches
@@ -74,6 +132,7 @@ const extractStructVariables = (declaration: string): ExtractedStructVariable[] 
 
   let match: RegExpExecArray | null
 
+  //TODO: Add checks if RegExp was successful
   while ((match = structVariableRegEx.exec(declaration)) !== null) {
 
     // This is necessary to avoid infinite loops with zero-width matches
@@ -93,8 +152,15 @@ const extractStructVariables = (declaration: string): ExtractedStructVariable[] 
 
 
 
-export const resolveIecStructs = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
 
+/**
+ * Resolves given string PLC STRUCT declaration to IEC data types
+ * @param declarations 
+ * @param topLevelDataType 
+ * @param providedTypes 
+ * @returns 
+ */
+export const resolveIecStructs = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
   //First extracting struct definitions from string
   const structs = extractStructDeclarations(declarations)
 
@@ -107,107 +173,14 @@ export const resolveIecStructs = (declarations: string, topLevelDataType?: strin
     topLevelDataType = structs[0].dataType
   }
 
-
-  /**
-   * Variable resolver that can be called recurively
-   * Does not return anything, instead, saves result to refResolved object (so that we can resolve some structs later)
-   * @param variable Variable to be resolved
-   * @param refResolved Target object where to save the result or where the result will be saved later ("as reference")
-   * @returns 
-   */
-  const resolveVariable = (variable: ExtractedStructVariable, refResolved: Record<string, IecType | undefined>): void => {
-    //Simple non-complex data type
-    let type: IecType | undefined = nonComplexTypes.find(t => t.type.toLowerCase() === variable.dataType.toLowerCase())
-
-    if (type) {
-      refResolved[variable.name] = type
-      return
-    }
-
-    //String or wstring
-    const stringMatch = stringRegEx.exec(variable.dataType)
-    
-    if (stringMatch) {
-      if (stringMatch[1].toLowerCase() === 'string') {
-        refResolved[variable.name] = STRING(stringMatch[3] ? parseInt(stringMatch[3]) : 80)
-
-      } else if (stringMatch[1].toLowerCase() === 'wstring') {
-        refResolved[variable.name] = WSTRING(stringMatch[3] ? parseInt(stringMatch[3]) : 80)
-
-      } else {
-        throw new Error(`Unknown STRING definition: ${stringMatch}`)
-      }
-      return
-    }
-
-    //Array
-    const arrayMatch = arrayRegEx.exec(variable.dataType)
-
-    if (arrayMatch) {
-      const resolvedArrayType = {} as Record<string, IecType | undefined>
-
-      resolveVariable({ name: 'result', dataType: arrayMatch[3] }, resolvedArrayType)
-      type = resolvedArrayType['result']
-      
-
-      if (!type) {
-        throw new Error(`Unknown array subtype ${arrayMatch[3]}`)
-      }
-
-      refResolved[variable.name] = ARRAY(type, parseInt(arrayMatch[2]) - parseInt(arrayMatch[1]) + 1)
-      return
-    }
-
-
-    //Struct (or unknown)
-    const struct = structs.find(struct => struct.dataType.toLowerCase() == variable.dataType.toLowerCase())
-
-    if (struct) {
-      if (struct.resolved) {
-        refResolved[variable.name] = STRUCT(struct.resolved)
-
-      } else {
-        //To be resolved later (struct not parsed yet), add resolver callback
-        refResolved[variable.name] = undefined
-
-        struct.resolvers.push(() => {
-          refResolved[variable.name] = STRUCT(struct.resolved)
-        })
-      }
-      return
-
-    } else {
-      //Are there any types provided?
-      if (providedTypes) {
-        const key = Object.keys(providedTypes).find(key => key.toLowerCase() === variable.dataType.toLowerCase())
-
-        if (key) {
-          refResolved[variable.name] = providedTypes[key]
-          return
-
-        } else {
-          throw new Error(`Unknown subtype ${variable.dataType} - Is data type declaration provided? Types found: ${structs.map(struct => struct.dataType).join(', ')}, types provided: ${Object.keys(providedTypes).join(',')}`)
-        }
-      } else {
-        throw new Error(`Unknown subtype ${variable.dataType} - Is data type declaration provided? Types found: ${structs.map(struct => struct.dataType).join(', ')}`)
-      }
-    }
-  }
-
-
-
-
+  //Resolving structs to IEC data types
   for (const struct of structs) {
-    //Going through all variables of the struct
-    struct.resolved = {}
-
-    for (const variable of struct.children) {
-      resolveVariable(variable, struct.resolved)
-    }
-    struct.resolvers.forEach(resolver => resolver())
-    struct.resolvers = []
+    //If already resolved, skip (happens if some other struct already depended on it)
+    if (struct.resolved)
+      continue
+    
+    struct.resolved = resolveIecStruct(struct, structs, providedTypes)
   }
-
 
   //Return the top-level struct
   const returnVal = structs.find(struct => topLevelDataType !== undefined && struct.dataType.toLowerCase() === topLevelDataType.toLowerCase())
@@ -216,5 +189,102 @@ export const resolveIecStructs = (declarations: string, topLevelDataType?: strin
     throw new Error(`Top-level type ${topLevelDataType} was not found - Is data type declaration provided? Types found: ${structs.map(struct => struct.dataType).join(', ')}`)
   }
 
-  return STRUCT(returnVal.resolved)
+  return types.STRUCT(returnVal.resolved)
+}
+
+
+
+
+/**
+ * Resolves a single struct to IEC data type 
+ * @param struct 
+ * @param structs 
+ * @param providedTypes 
+ * @returns 
+ */
+const resolveIecStruct = (struct: ExtractedStruct, structs: ExtractedStruct[], providedTypes?: Record<string, IecType>): Record<string, IecType> => {
+  const resolved = {} as Record<string, IecType>
+
+  for (const variable of struct.children) {
+    resolved[variable.name] = resolveIecVariable(variable.dataType, structs, providedTypes)
+  }
+
+  return resolved
+}
+
+
+
+/**
+ * Resolves a single variable to IEC data type
+ * Calls itself recursively if needed (like array types)
+ * @param dataType 
+ * @param structs 
+ * @param providedTypes 
+ * @returns 
+ */
+const resolveIecVariable = (dataType: string, structs: ExtractedStruct[], providedTypes?: Record<string, IecType>): IecType => {
+  //Simple non-complex data type
+  let type: IecType | undefined = nonComplexTypes.find(type => type.type.toLowerCase() === dataType.toLowerCase())
+
+  if (type) {
+    return type
+  }
+
+  //String or wstring
+  //TODO: Add checks if RegExp was successful
+  const stringMatch = stringRegEx.exec(dataType)
+
+  if (stringMatch) {
+    if (stringMatch[1].toLowerCase() === 'string') {
+      return types.STRING(stringMatch[3] ? parseInt(stringMatch[3]) : 80)
+
+    } else if (stringMatch[1].toLowerCase() === 'wstring') {
+      return types.WSTRING(stringMatch[3] ? parseInt(stringMatch[3]) : 80)
+
+    } else {
+      throw new Error(`Unknown STRING definition: "${stringMatch}"`)
+    }
+  }
+  
+  //Array
+  //TODO: Add checks if RegExp was successful
+  const arrayMatch = arrayRegEx.exec(dataType)
+
+  if (arrayMatch) {
+    type = resolveIecVariable(arrayMatch[3], structs, providedTypes)
+  
+    if (!type) {
+      //This shouldn't happen
+      throw new Error(`Unknown array data type "${arrayMatch[3]}"`)
+    }
+
+    return types.ARRAY(type, parseInt(arrayMatch[2]) - parseInt(arrayMatch[1]) + 1)
+  }
+
+
+  //Struct (or unknown)
+  const struct = structs.find(struct => struct.dataType.toLowerCase() == dataType.toLowerCase())
+
+  if (struct) {
+    //If struct is found but not yet resolved, resolve it now
+    if (!struct.resolved) {
+      struct.resolved = resolveIecStruct(struct, structs, providedTypes)
+    }
+
+    return types.STRUCT(struct.resolved)
+
+  } else {
+    //Struct type was unknown. Was it provided already?
+    if (providedTypes) {
+      const key = Object.keys(providedTypes).find(key => key.toLowerCase() === dataType.toLowerCase())
+
+      if (key) {
+        return providedTypes[key]
+      } else {
+        throw new Error(`Unknown data type "${dataType}" found! Types found from declaration: ${structs.map(struct => struct.dataType).join(', ')}, types provided separately: ${Object.keys(providedTypes).join(',')}`)
+      }
+    } else {
+      throw new Error(`Unknown data type "${dataType}" found! Types found from declaration: ${structs.map(struct => struct.dataType).join(', ')}`)
+    }
+  }
 }
