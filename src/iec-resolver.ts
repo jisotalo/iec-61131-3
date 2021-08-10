@@ -86,7 +86,15 @@ const stringRegEx = new RegExp('^(STRING|WSTRING)([\\[\\(](.*?)[\\)\\]])*$', 'i'
 /**
  * RegExp pattern for matching ARRAY types
  */
-const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)\s*\.\.\s*(.*?)[\])]\s*of\s*([^:;]*)/gis)
+//const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)\s*\.\.\s*(.*?)[\])]\s*of\s*([^:;]*)/gis)
+const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)[\])]\s*of\s*([^:;]*)/gis)
+
+
+/**
+ * RegExp pattern for matching ARRAY dimensions
+ * Input: "0..10", "-5..5, 0..2" etc
+ */
+const arrayDimensionsRegEx = new RegExp(/(?:\s*(?:([^\.,\s]*)\s*\.\.\s*([^,\s]*))\s*)/gis)
 
 
 /**
@@ -251,14 +259,29 @@ const resolveIecVariable = (dataType: string, structs: ExtractedStruct[], provid
   const arrayMatch = arrayRegEx.exec(dataType)
 
   if (arrayMatch) {
-    type = resolveIecVariable(arrayMatch[3], structs, providedTypes)
+    console.log(arrayMatch)
+    type = resolveIecVariable(arrayMatch[2], structs, providedTypes)
   
     if (!type) {
       //This shouldn't happen
-      throw new Error(`Unknown array data type "${arrayMatch[3]}"`)
+      throw new Error(`Unknown array data type "${arrayMatch[2]}"`)
     }
 
-    return types.ARRAY(type, parseInt(arrayMatch[2]) - parseInt(arrayMatch[1]) + 1)
+    //Array dimensions
+    const dimensions = []
+    
+    let match: RegExpExecArray | null
+    //TODO: Add checks if RegExp was successful
+    while ((match = arrayDimensionsRegEx.exec(arrayMatch[1])) !== null) {
+      // This is necessary to avoid infinite loops with zero-width matches
+      if (match.index === arrayDimensionsRegEx.lastIndex) {
+        arrayDimensionsRegEx.lastIndex++
+      }
+      
+      dimensions.push(parseInt(match[2]) - parseInt(match[1]) + 1)
+    }
+    return types.ARRAY(type, dimensions)
+    //return types.ARRAY(type, )
   }
 
 
