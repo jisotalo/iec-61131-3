@@ -59,3 +59,43 @@ export interface IecType {
  * Anything that can be under STRUCT data type
  */
 export type StructChildren = Record<string, IecType> | Record<string, never> | undefined | null
+
+
+
+/**
+ * Extracted STRUCT definition from string declaration - used in fromString()
+ */
+export interface ExtractedStruct {
+  /**
+   * Data type of the struct as string (like ST_Example)
+   */
+  dataType: string,
+
+  /**
+   * Array of extracted children variables of the struct (names and data types as string)
+   */
+  children: ExtractedStructVariable[],
+
+  /**
+   * Resolved struct children variable declarations (names and resolved IEC data types)
+   * Note: This might be undefined if data type is not yet resolved (like struct that contains structs)
+   */
+  resolved?: Record<string, IecType>,
+}
+
+
+
+/**
+ * Extracted STRUCT child variable definition from string declaration - used in fromString()
+ */
+export interface ExtractedStructVariable {
+  /**
+   * Variable name
+   */
+  name: string,
+
+  /**
+   * Variable data type as string
+   */
+  dataType: string
+}
