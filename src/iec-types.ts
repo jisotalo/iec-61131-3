@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 import type {
+  EnumDataType,
   IecType,
   StructChildren
 } from './types/types'
@@ -43,6 +44,17 @@ export const STRUCT = (children: StructChildren): handler.STRUCT => new handler.
  * @param dimensions If 1-dimensional array: Array dimension (size) as number. If multi-dimensional array, array dimensions as array (like [1, 10, 5])
  */
 export const ARRAY = (dataType: IecType, dimensions: number | number[]): handler.ARRAY => new handler.ARRAY(dataType, dimensions)
+
+/**
+ * IEC 61131-3 type: ENUM
+ * Handles enumeration types with different data types
+ * 
+ * @param definition Enumeration definition as object (like {key1: 1, key2: 2})
+ * @param dataType Data type of the ENUM (default is iec.INT)
+ * @returns 
+ */
+export const ENUM = (definition: Record<string, number>, dataType?: EnumDataType): handler.ENUM => new handler.ENUM(definition, dataType)
+
 
 /**
  * IEC 61131-3 type: STRING

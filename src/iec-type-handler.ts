@@ -25,6 +25,9 @@ SOFTWARE.
 import iconv from 'iconv-lite'
 
 import type {
+  EnumDataType,
+  EnumEntry,
+  EnumValue,
   IecType,
   StructChildren
 } from './types/types'
@@ -221,6 +224,127 @@ export class ARRAY extends TypeBase implements IecType {
   }
 }
 
+
+
+/**
+ * IEC 61131-3 type: ENUM
+ */
+export class ENUM extends TypeBase implements IecType {
+  type = 'ENUM'
+
+  definition: Record<string, number>
+  dataType: IecType
+
+  constructor(definition: Record<string, number>, dataType?: EnumDataType) {
+    super()
+
+    this.definition = definition
+
+    this.dataType = dataType ? dataType : new INT()
+    this.byteLength = this.dataType.byteLength
+  }
+
+
+  convertToBuffer(data: EnumValue): Buffer {
+    if (!data)
+      return Buffer.alloc(0)
+
+    if (typeof data === 'string') {
+      //Enumeration name given as string
+      const found = Object.keys(this.definition).find(key => key.toLowerCase() === data.toLowerCase())
+
+      if (found) {
+        return this.dataType.convertToBuffer(this.definition[found])
+      }
+      throw new Error('Input parameter is not valid for ENUM - TODO')
+
+    } else if (typeof data === 'number') {
+      //Enumeration value given as number
+      return this.dataType.convertToBuffer(data)
+
+    } else if (typeof data === 'object' && (data as EnumEntry).value) {
+      //Object given with value key
+      return this.dataType.convertToBuffer(data)
+
+    } else if (typeof data === 'object' && (data as EnumEntry).name) {
+      //Object given with name key
+      const found = Object.keys(this.definition).find(key => data.name && key.toLowerCase() === data.name.toLowerCase())
+
+      if (found) {
+        return this.dataType.convertToBuffer(this.definition[found])
+      }
+      throw new Error('Input parameter is not valid for ENUM - TODO')
+
+    } else {
+      throw new Error('Input parameter is not valid for ENUM (number, string or object with { value })')
+    }
+  }
+  
+
+  convertFromBuffer(data: Buffer): EnumEntry {
+    //First, converting buffer to number
+    const value = this.dataType.convertFromBuffer(data) as number
+
+    const entry = this.findEnumEntryByValue(value)
+
+    if (entry)
+      return entry
+
+    //Not found
+    return {
+      name: undefined,
+      value
+    }
+  }
+
+
+
+  getDefault(): EnumEntry {
+    //Codeys initializes the value with the first enumeration component
+    //Use it, unless there are none
+    const keys = Object.keys(this.definition)
+
+    if (keys.length > 0) {
+      return {
+        name: keys[0],
+        value: this.definition[keys[0]]
+      }
+
+    } else {
+      //No entries? Use data type default value
+      const value = (this.dataType as EnumDataType).getDefault()
+
+      //Do we have enumeration entry for default value?
+      const entry = this.findEnumEntryByValue(value)
+    
+      if (entry)
+        return entry
+    
+      //Not found
+      return {
+        name: undefined,
+        value
+      }
+    }
+  }
+
+
+
+  findEnumEntryByValue(value: number): EnumEntry | undefined {
+    for (const key in this.definition) {
+      if (this.definition[key] === value) {
+        //Found
+        return {
+          name: key,
+          value: value
+        }
+      }
+    }
+
+    //Not found
+    return undefined
+  }
+}
 
 
 

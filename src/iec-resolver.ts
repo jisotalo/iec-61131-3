@@ -124,7 +124,7 @@ const extractStructDeclarations = (declarations: string): ExtractedStruct[] => {
     })
   }
 
-
+console.log(extractedStructs[1])
   return extractedStructs
 }
 
@@ -164,13 +164,13 @@ const extractStructVariables = (declaration: string): ExtractedStructVariable[] 
 
 
 /**
- * Resolves given string PLC STRUCT declaration to IEC data types
+ * Resolves given string PLC type declarations to IEC data types
  * @param declarations 
  * @param topLevelDataType 
  * @param providedTypes 
  * @returns 
  */
-export const resolveIecStructs = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
+export const resolveIecTypes = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
   //First extracting struct definitions from string
   const structs = extractStructDeclarations(declarations)
 

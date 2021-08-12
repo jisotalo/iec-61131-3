@@ -23,6 +23,9 @@ SOFTWARE.
 */
 
 
+import * as types from '../iec-type-handler'
+
+
 /**
  * IEC data type interface
  */
@@ -61,6 +64,32 @@ export interface IecType {
 export type StructChildren = Record<string, IecType> | Record<string, never> | undefined | null
 
 
+/**
+ * Allowed enumeration values
+ */
+export type EnumValue = EnumEntry | string | number
+
+/**
+ * Enumeration value object
+ */
+export interface EnumEntry {
+  name: string | undefined,
+  value: number
+}
+
+export type EnumDataType =
+  types.USINT
+  | types.BYTE
+  | types.SINT
+  | types.UINT
+  | types.WORD
+  | types.INT
+  | types.DINT
+  | types.UDINT
+  | types.DWORD
+  | types.ULINT
+  | types.LWORD
+  | types.LINT
 
 /**
  * Extracted STRUCT definition from string declaration - used in fromString()
