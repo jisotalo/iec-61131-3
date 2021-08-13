@@ -26,7 +26,7 @@ SOFTWARE.
 
 import * as types from "./iec-types"
 
-import { ExtractedStruct, ExtractedStructVariable, IecType } from "./types/types"
+import { dataTypeUnit, EnumEntry, ExtractedEnum, ExtractedStruct, ExtractedStructVariable, ExtractedType, IecType } from "./types/types"
 
 
 /**
@@ -64,12 +64,26 @@ const nonComplexTypes = [
  *   ...
  *  END_TYPE
  */
-const typeRegEx = new RegExp(/type\s*(\w*)\s*:(.*?)end_type/gis)
+//const typeRegEx = new RegExp(/type\s*(\w*)\s*:(.*?)end_type/gis)
+
+
+/**
+ * RegExp pattern for matching DUTs (struct, union, alias, enum)
+ */
+const typeRegEx = new RegExp(/type\s*(\w*)\s*[:]*\s*(struct|union|\(|:)\s*(.*?)(?:end_struct|end_union|;|\)\s*([^\s]*?)\s*;)\s*end_type/gis)
+
+
+
 
 /**
  * RegExp pattern for matching STRUCT variables (children)
  */
 const structVariableRegEx = new RegExp(/(\w+)\s*:\s*([^:;]*)/gis)
+
+/**
+ * RegExp pattern for matching ENUM
+ */
+const enumRegEx = new RegExp(/\s*(.+?)\s*(?::=\s*(.*?)\s*)*(?:,|$)/gis)
 
 
 /**
@@ -101,41 +115,76 @@ const arrayDimensionsRegEx = new RegExp(/(?:\s*(?:([^\.,\s]*)\s*\.\.\s*([^,\s]*)
  * Extracts struct declarations from given string containing one or multiple TYPE...END_TYPE declarations
  * @param declaration 
  */
-const extractStructDeclarations = (declarations: string): ExtractedStruct[] => {
-
-  const extractedStructs: ExtractedStruct[] = []
+const extractTypeDeclarations = (declarations: string): ExtractedType[] => {
+  const extractedTypes: ExtractedType[] = []
   let match: RegExpExecArray | null
   const typeMatcher = new RegExp(typeRegEx)
-  
+
   //Looping until all no more declarations found
   //TODO: Add checks if RegExp was successful
   while ((match = typeMatcher.exec(declarations)) !== null) {
-
     // This is necessary to avoid infinite loops with zero-width matches
     if (match.index === typeMatcher.lastIndex) {
       typeMatcher.lastIndex++;
     }
 
-    //Creating new temporary extracted struct object
-    extractedStructs.push({
-      dataType: match[1],
-      children: extractStructVariables(match[2]),
-      resolved: undefined
-    })
+    if (match.length < 5) {
+      throw new Error(`Problem extracting IEC type declaration from given string. RegExp result has less than 4 matches: ${JSON.stringify(match)}`)
+    }
+
+    const type = {} as ExtractedType
+
+    //Match 1 is the user-defined name
+    type.name = match[1]
+
+    //Match 3 is the content (depends on type)
+   // type.content = 
+
+    //Match 2 provides info which type is it
+    switch (match[2].toLowerCase()) {
+      //STRUCT:
+      case 'struct':
+        type.type = dataTypeUnit.STRUCT
+        type.content = extractTypeVariables(match[3])
+        break;
+
+      //UNION:
+      case 'union':
+        type.type = dataTypeUnit.UNION
+        type.content = extractTypeVariables(match[3])
+        break;
+
+      //ENUM:
+      case '(':
+        console.log(match)
+        type.type = dataTypeUnit.ENUM
+        type.content = extractEnum(match[3], match[4])
+        break;
+      
+      //ALIAS:
+      case ':':
+        type.type = dataTypeUnit.ALIAS
+        type.content = match[3]
+        break;
+      
+      default:
+        throw new Error(`Problem extracting IEC data type (DUT) from given string. Found match: ${JSON.stringify(match)}`)
+    }
+    
+
+    extractedTypes.push(type)
   }
 
-console.log(extractedStructs[1])
-  return extractedStructs
+  return extractedTypes
 }
 
 
-
 /**
- * Extracts struct variables (children) from given declaration string
+ * Extracts STRUCT/UNION variables (children) from given declaration string
  * @param declaration 
  * @returns 
  */
-const extractStructVariables = (declaration: string): ExtractedStructVariable[] => {
+const extractTypeVariables = (declaration: string): ExtractedStructVariable[] => {
 
   const extractedVariables: ExtractedStructVariable[] = []
 
@@ -160,6 +209,62 @@ const extractStructVariables = (declaration: string): ExtractedStructVariable[] 
 }
 
 
+/**
+ * Extracts ENUM from given declaration string
+ * @param declaration 
+ * @returns 
+ */
+const extractEnum = (declaration: string, dataType?: string): ExtractedEnum => {
+
+  if (dataType === undefined || dataType === '')
+    dataType = 'INT'
+  
+  const extractedEnum = {
+    dataType,
+    content: []
+  } as ExtractedEnum
+
+  let match: RegExpExecArray | null
+  const enumMatcher = new RegExp(enumRegEx)
+
+  //TODO: Add checks if RegExp was successful
+  while ((match = enumMatcher.exec(declaration)) !== null) {
+
+    // This is necessary to avoid infinite loops with zero-width matches
+    if (match.index === enumMatcher.lastIndex) {
+      enumMatcher.lastIndex++
+    }
+
+    let value = match[2] === undefined ? undefined : parseInt(match[2])
+    
+    //If value is undefined, it's not provided in the ENUM
+    //--> The value is previous value + 1 if available
+    //Otherwise value is 0
+    if (value === undefined && extractedEnum.content.length > 0) {
+      value = extractedEnum.content[extractedEnum.content.length - 1].value + 1
+      
+    } else if(value === undefined){
+      value = 0
+    }
+
+    if (value === undefined)
+      throw new Error(`Problem calculating ENUM entry "${match[1]}". Found match: ${JSON.stringify(match)}`)
+
+    //TODO: When adding support for constants edit this
+    //We could have ENUM that has value := SOME_CONSTANT
+    if (isNaN(value))
+      throw new Error(`Problem calculating ENUM entry "${match[1]}" value from "${match[2]}". Found match: ${JSON.stringify(match)}`)
+
+    extractedEnum.content.push({
+      name: match[1],
+      value
+    })
+
+  }
+
+  return extractedEnum
+}
+
 
 
 
@@ -171,6 +276,13 @@ const extractStructVariables = (declaration: string): ExtractedStructVariable[] 
  * @returns 
  */
 export const resolveIecTypes = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
+  //First extracting basic type definitions from string
+  const types = extractTypeDeclarations(declarations)
+
+  //Building each type
+  console.log(types)
+  process.exit()
+
   //First extracting struct definitions from string
   const structs = extractStructDeclarations(declarations)
 

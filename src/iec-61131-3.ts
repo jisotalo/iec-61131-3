@@ -26,7 +26,7 @@ import type {
   IecType
 } from './types/types'
 
-import { resolveIecStructs } from './iec-resolver'
+import { resolveIecTypes } from './iec-resolver'
 
 
 
@@ -48,7 +48,7 @@ export * from './iec-types'
  * @returns 
  */
 export const fromString = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
-  return resolveIecStructs(declarations, topLevelDataType, providedTypes)
+  return resolveIecTypes(declarations, topLevelDataType, providedTypes)
 }
 
 

@@ -91,6 +91,40 @@ export type EnumDataType =
   | types.LWORD
   | types.LINT
 
+
+export enum dataTypeUnit {
+  STRUCT = 'STRUCT',
+  UNION = 'UNION',
+  ENUM = 'ENUM',
+  ALIAS = 'ALIAS'
+}
+
+/**
+ * Extracted TYPE definition from string declaration - used in fromString()
+ */
+export interface ExtractedType {
+  /**
+   * Data type unit type
+   */
+  type: dataTypeUnit,
+
+
+  /**
+   * Name of the type as string (like ST_Example, E_Enum)
+   */
+  name: string,
+
+  /**
+   * 
+   */
+  content: string | ExtractedStructVariable[] | ExtractedEnum
+
+
+  children: ExtractedStructVariable[],
+}
+
+
+
 /**
  * Extracted STRUCT definition from string declaration - used in fromString()
  */
@@ -127,4 +161,11 @@ export interface ExtractedStructVariable {
    * Variable data type as string
    */
   dataType: string
+}
+
+
+
+export interface ExtractedEnum {
+  dataType: string,
+  content: EnumEntry[]
 }
