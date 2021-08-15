@@ -117,10 +117,9 @@ export interface ExtractedType {
   /**
    * 
    */
-  content: string | ExtractedStructVariable[] | ExtractedEnum
+  content: ExtractedStructVariable[] | ExtractedEnum | ExtractedAlias
 
-
-  children: ExtractedStructVariable[],
+  resolved?: IecType,
 }
 
 
@@ -167,5 +166,11 @@ export interface ExtractedStructVariable {
 
 export interface ExtractedEnum {
   dataType: string,
-  content: EnumEntry[]
+  content: Record<string, number>,
+  resolved?: IecType,
+}
+
+export interface ExtractedAlias {
+  dataType: string,
+  resolved?: IecType,
 }

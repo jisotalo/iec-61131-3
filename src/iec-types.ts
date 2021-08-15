@@ -36,6 +36,13 @@ import * as handler from './iec-type-handler'
  */
 export const STRUCT = (children: StructChildren): handler.STRUCT => new handler.STRUCT(children)
 
+
+/**
+ * IEC 61131-3 type: UNION
+ * Provide union children as object
+ */
+export const UNION = (children: StructChildren): handler.UNION => new handler.UNION(children)
+
 /**
  * IEC 61131-3 type: ARRAY
  * Handles 1..3 dimensional arrays

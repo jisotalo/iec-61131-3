@@ -109,6 +109,72 @@ export class STRUCT extends TypeBase implements IecType {
 
 
 
+/**
+ * IEC 61131-3 type: UNION
+ */
+export class UNION extends TypeBase implements IecType {
+  type = 'UNION'
+  /**
+   * UNION children data types
+   */
+  children: StructChildren
+
+  constructor(children: StructChildren) {
+    super()
+
+    this.children = children
+
+    //Calculating union size (= biggest child)
+    for (const key in this.children) {
+      if (this.children[key].byteLength > this.byteLength)
+        this.byteLength = this.children[key].byteLength
+    }
+  }
+
+
+  convertToBuffer(data: StructChildren): Buffer {
+    if (!data)
+      return Buffer.alloc(0)
+
+    //TODO: How to do this?
+    return Buffer.alloc(0)
+    /*
+    const buffer = Buffer.alloc(this.byteLength)
+    let pos = 0
+
+    for (const key in this.children) {
+      const converted = this.children[key].convertToBuffer(data[key])
+
+      converted.copy(buffer, pos)
+      pos += converted.byteLength
+    }
+
+    return buffer*/
+  }
+
+  convertFromBuffer(data: Buffer): Record<string, unknown> {
+    const obj = {} as Record<string, unknown>
+
+    for (const key in this.children) {
+      obj[key] = this.children[key].convertFromBuffer(data.slice(0, this.children[key].byteLength))
+    }
+
+    return obj
+  }
+
+  getDefault(): Record<string, unknown> {
+    const obj = {} as Record<string, unknown>
+
+    for (const key in this.children) {
+      obj[key] = this.children[key].getDefault()
+    }
+
+    return obj
+  }
+}
+
+
+
 
 /**
  * IEC 61131-3 type: ARRAY
