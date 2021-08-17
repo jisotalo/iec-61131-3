@@ -37,15 +37,15 @@ export * from './iec-types'
 
 
 /**
- * Converts given IEC structure declaration(s) to data type. 
- * - If only one struct declaration given, it's selected automatically.
+ * Converts given PLC data type declaration(s) to IEC data type. 
+ * - If only one declaration given, it's selected automatically.
  * - If multiple given, top-level type needs to be given as 2nd parameter.
- * - Additionally, IEC data types can be provided as 3rd parameter {name: type}
+ * - Additionally, pre-defined IEC data types can be provided as 3rd parameter {name: type}
  * 
  * @param declarations PLC IEC-61131-3 struct type declarations (one or multiple)
  * @param topLevelDataType If multiple struct type declarations given, the top-level struct type name needs to be provided (= which struct should be returned as IEC type)
  * @param providedTypes Object containing struct data type names and their IEC types if required (if some structs are defined somewhere else) - like {'ST_Example': STRUCT(...)}
- * @returns 
+ * @returns IEC data type object
  */
 export const fromString = (declarations: string, topLevelDataType?: string, providedTypes?: Record<string, IecType>): IecType => {
   return resolveIecTypes(declarations, topLevelDataType, providedTypes)

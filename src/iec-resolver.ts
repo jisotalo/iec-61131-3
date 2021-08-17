@@ -26,7 +26,16 @@ SOFTWARE.
 
 import * as iecTypes from "./iec-types"
 
-import { dataTypeUnit, EnumEntry, ExtractedEnum, ExtractedStruct, ExtractedStructVariable, ExtractedType, IecType, ExtractedAlias, EnumDataType } from "./types/types"
+import {
+  dataTypeUnit,
+  EnumEntry,
+  ExtractedEnum,
+  ExtractedType,
+  IecType,
+  ExtractedAlias,
+  EnumDataType,
+  ExtractedTypeVariable
+} from "./types/types"
 
 
 /**
@@ -56,19 +65,8 @@ const nonComplexTypes = [
   iecTypes.LINT
 ]
 
-
-
 /**
- * RegExp pattern for matching TYPEs like STRUCT etc.
- *  TYPE
- *   ...
- *  END_TYPE
- */
-//const typeRegEx = new RegExp(/type\s*(\w*)\s*:(.*?)end_type/gis)
-
-
-/**
- * RegExp pattern for matching DUTs (struct, union, alias, enum)
+ * RegExp pattern for matching data type units DUTs (struct, union, alias, enum)
  */
 const typeRegEx = new RegExp(/type\s*(\w*)\s*[:]*\s*(struct|union|\(|:)\s*(.*?)(?:end_struct|end_union|;|\)\s*([^\s]*?)\s*;)\s*end_type/gis)
 
@@ -111,9 +109,13 @@ const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)[\])]\s*of\s*([^:;]*)/gis)
 const arrayDimensionsRegEx = new RegExp(/(?:\s*(?:([^\.,\s]*)\s*\.\.\s*([^,\s]*))\s*)/gis)
 
 
+
+
+
 /**
  * Extracts struct declarations from given string containing one or multiple TYPE...END_TYPE declarations
- * @param declaration 
+ * @param declaration Declaration string
+ * @returns Extracted data types
  */
 const extractTypeDeclarations = (declarations: string): ExtractedType[] => {
   const extractedTypes: ExtractedType[] = []
@@ -139,10 +141,8 @@ const extractTypeDeclarations = (declarations: string): ExtractedType[] => {
     //Match 1 is the user-defined name
     type.name = match[1]
 
-    //Match 3 is the content (depends on type)
-   // type.content = 
-
     //Match 2 provides info which type is it
+    //Match 3 is the content (depends on type)
     switch (match[2].toLowerCase()) {
       //STRUCT:
       case 'struct':
@@ -168,13 +168,11 @@ const extractTypeDeclarations = (declarations: string): ExtractedType[] => {
         type.content = {
           dataType: match[3]
         } as ExtractedAlias
-
         break;
       
       default:
         throw new Error(`Problem extracting IEC data type (DUT) from given string. Found match: ${JSON.stringify(match)}`)
     }
-    
 
     extractedTypes.push(type)
   }
@@ -183,14 +181,16 @@ const extractTypeDeclarations = (declarations: string): ExtractedType[] => {
 }
 
 
+
+
 /**
  * Extracts STRUCT/UNION variables (children) from given declaration string
  * @param declaration 
  * @returns 
  */
-const extractTypeVariables = (declaration: string): ExtractedStructVariable[] => {
+const extractTypeVariables = (declaration: string): ExtractedTypeVariable[] => {
 
-  const extractedVariables: ExtractedStructVariable[] = []
+  const extractedVariables: ExtractedTypeVariable[] = []
 
   let match: RegExpExecArray | null
   const structVariableMatcher = new RegExp(structVariableRegEx)
@@ -211,6 +211,8 @@ const extractTypeVariables = (declaration: string): ExtractedStructVariable[] =>
 
   return extractedVariables
 }
+
+
 
 
 /**
@@ -266,7 +268,6 @@ const extractEnum = (declaration: string, dataType?: string): ExtractedEnum => {
     })
 
     extractedEnum.content[match[1]] = value
-
   }
 
   return extractedEnum
@@ -297,12 +298,11 @@ export const resolveIecTypes = (declarations: string, topLevelDataType?: string,
   
   //Resolving types to IEC data types
   for (const type of types) {
-    //If already resolved, skip (happens if some other struct already depended on it)
+    //If already resolved, skip (happens if some other type already depended on it)
     if (type.resolved)
       continue
     
-    type.resolved = resolveIecType(type, types, providedTypes)
-    
+    type.resolved = resolveIecDataTypeUnit(type, types, providedTypes)
   }
 
   //Return the top-level struct
@@ -319,27 +319,33 @@ export const resolveIecTypes = (declarations: string, topLevelDataType?: string,
  
 
 
-
-const resolveIecType = (type: ExtractedType, types: ExtractedType[], providedTypes?: Record<string, IecType>): IecType => {
+/**
+ * Resolves single IEC data type unit from given parsed ExtractedType object
+ * 
+ * @param type Type to be resolved
+ * @param types List of all available types that are/will be resolved
+ * @param providedTypes List of user-provided types
+ * @returns Resolved type (IecType object)
+ */
+const resolveIecDataTypeUnit = (type: ExtractedType, types: ExtractedType[], providedTypes?: Record<string, IecType>): IecType => {
 
   switch (type.type) {
     case dataTypeUnit.STRUCT: {
       const children = {} as Record<string, IecType>
 
-      for (const variable of type.content as ExtractedStructVariable[]) {
+      for (const variable of type.content as ExtractedTypeVariable[]) {
         children[variable.name] = resolveIecVariable(variable.dataType, types, providedTypes)
       }
-      
       return iecTypes.STRUCT(children)
     }
 
     case dataTypeUnit.UNION: {
+      //Basically 1:1 as struct
       const children = {} as Record<string, IecType>
 
-      for (const variable of type.content as ExtractedStructVariable[]) {
+      for (const variable of type.content as ExtractedTypeVariable[]) {
         children[variable.name] = resolveIecVariable(variable.dataType, types, providedTypes)
       }
-
       return iecTypes.UNION(children)
     }
     
@@ -363,12 +369,12 @@ const resolveIecType = (type: ExtractedType, types: ExtractedType[], providedTyp
 
 
 /**
- * Resolves a single variable to IEC data type
+ * Resolves a single variable data type (string) to IEC data type
  * Calls itself recursively if needed (like array types)
- * @param dataType 
- * @param structs 
- * @param providedTypes 
- * @returns 
+ * @param dataType Data type name as string
+ * @param structs List of all available types that are/will be resolved
+ * @param providedTypes List of user-provided types
+ * @returns Resolved type (IecType object)
  */
 const resolveIecVariable = (dataType: string, types: ExtractedType[], providedTypes?: Record<string, IecType>): IecType => {
   //Simple non-complex data type
@@ -433,7 +439,7 @@ const resolveIecVariable = (dataType: string, types: ExtractedType[], providedTy
   if (dataTypeUnit) {
     //If type is found but not yet resolved, resolve it now
     if (!dataTypeUnit.resolved) {
-      dataTypeUnit.resolved = resolveIecType(dataTypeUnit, types, providedTypes)
+      dataTypeUnit.resolved = resolveIecDataTypeUnit(dataTypeUnit, types, providedTypes)
     }
 
     return dataTypeUnit.resolved as IecType

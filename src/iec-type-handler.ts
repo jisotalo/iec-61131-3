@@ -28,8 +28,7 @@ import type {
   EnumDataType,
   EnumEntry,
   EnumValue,
-  IecType,
-  StructChildren
+  IecType
 } from './types/types'
 
 
@@ -53,21 +52,25 @@ export class STRUCT extends TypeBase implements IecType {
   /**
    * STRUCT children data types
    */
-  children: StructChildren
+  children?: Record<string, IecType | never>
 
-  constructor(children: StructChildren) {
+  constructor(children?: Record<string, IecType | never>) {
     super()
     
     this.children = children
 
     //Calculating struct size
     for (const key in this.children) {
+      if (typeof this.children[key] !== 'object' || this.children[key].byteLength === undefined) {
+        throw new Error(`Struct member ${key} is not valid IEC data type - Did you remember to use () with some data types that require it (example with STRING())?`)
+      }
+
       this.byteLength += this.children[key].byteLength
     }
   }
 
 
-  convertToBuffer(data: StructChildren): Buffer {
+  convertToBuffer(data: Record<string, unknown>): Buffer {
     if (!data)
       return Buffer.alloc(0)
 
@@ -117,39 +120,44 @@ export class UNION extends TypeBase implements IecType {
   /**
    * UNION children data types
    */
-  children: StructChildren
+  children?: Record<string, IecType | never>
 
-  constructor(children: StructChildren) {
+  constructor(children?: Record<string, IecType | never>) {
     super()
 
     this.children = children
 
     //Calculating union size (= biggest child)
     for (const key in this.children) {
+      if (typeof this.children[key] !== 'object' || this.children[key].byteLength === undefined) {
+        throw new Error(`Struct member ${key} is not valid IEC data type - Did you remember to use () with some data types that require it (example with STRING())?`)
+      }
+
       if (this.children[key].byteLength > this.byteLength)
         this.byteLength = this.children[key].byteLength
     }
   }
 
 
-  convertToBuffer(data: StructChildren): Buffer {
+  convertToBuffer(data: Record<string, unknown>): Buffer {
     if (!data)
       return Buffer.alloc(0)
 
-    //TODO: How to do this?
-    return Buffer.alloc(0)
-    /*
+    //As UNION type member all are located in same memory, it's not that easy
+    //For now: Use the last given object key value
+    
     const buffer = Buffer.alloc(this.byteLength)
-    let pos = 0
 
     for (const key in this.children) {
+      if (data[key] === undefined)
+        continue
+      
+      //There is only one value allowed so quit after this
       const converted = this.children[key].convertToBuffer(data[key])
-
-      converted.copy(buffer, pos)
-      pos += converted.byteLength
+      converted.copy(buffer, 0)
     }
 
-    return buffer*/
+    return buffer
   }
 
   convertFromBuffer(data: Buffer): Record<string, unknown> {
@@ -322,7 +330,7 @@ export class ENUM extends TypeBase implements IecType {
       if (found) {
         return this.dataType.convertToBuffer(this.definition[found])
       }
-      throw new Error('Input parameter is not valid for ENUM - TODO')
+      throw new Error('Input parameter is not valid for ENUM')
 
     } else if (typeof data === 'number') {
       //Enumeration value given as number
@@ -339,7 +347,7 @@ export class ENUM extends TypeBase implements IecType {
       if (found) {
         return this.dataType.convertToBuffer(this.definition[found])
       }
-      throw new Error('Input parameter is not valid for ENUM - TODO')
+      throw new Error('Input parameter is not valid for ENUM')
 
     } else {
       throw new Error('Input parameter is not valid for ENUM (number, string or object with { value })')
