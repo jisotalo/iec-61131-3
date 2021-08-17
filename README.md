@@ -6,31 +6,35 @@
 
 IEC 61131-3 PLC data type helper for Node.js. Allows creating PLC data type schemas in Javascript and conversion between Javascript objects and raw binary PLC data. 
 
-Supports automatic conversion from PLC code variable declarations to IEC types.
+Supports automatic conversion from PLC code variable declarations (structs, enums, unions, aliases) to IEC types.
 
 Inspiration from [iecstruct](https://www.npmjs.com/package/iecstruct) project, however written from scratch.
 
 
 # Project status
 
-This project is in early stage. It will still change a lot. There are also situations where strange error could be thrown (work in progress).
+This project is in early stage. There is still some error handling missing.
 
 Things to do
-- Adding more examples
-- Using this library with CODESYS systems
-- Adding ENUM support
-- Updating fromString() to support ENUMs and CONSTANTs (for constant sized arrays)
+- Adding more examples to README
+- Example how to use this library with CODESYS systems
+- Updating `fromString()` to support CONSTANTs (for constant sized arrays etc.)
 - Adding supports for different pack-modes (now only pack-mode 1)
 - Adding checks if Node.js version has BigInt support
 - Adding more error checking
+- Adding TypeScript type/interface definition generator
 
 
 
 # Table of contents
 - [Installing](#installing)
 - [IMPORTANT NOTE](#important-note)
+- [Available data types](#available-data-types)
+- [Documentation](#documentation)
+  * [Defining data types](#defining-data-types)
+  * [Using `fromString()` automatic method](#using--fromstring----automatic-method)
 - [Examples](#examples)
-  * [Manually providing the data types](#manually-providing-the-data-types)
+  * [Manually creating the data type schema](#manually-creating-the-data-type-schema)
   * [Automatic conversion from PLC declaration](#automatic-conversion-from-plc-declaration)
     + [Single struct](#single-struct)
     + [Multiple structs - Providing all data types at once](#multiple-structs---providing-all-data-types-at-once)
@@ -50,41 +54,373 @@ In CODESYS based systems (TwinCAT etc.), add the following above `STRUCT` defini
 
 `{attribute 'pack_mode' := '1'}`
 
+# Available data types
+- STRUCT
+- UNION
+- ARRAY
+- ENUM
+- STRING
+- WSTRING
+- BOOL
+- USINT
+- BYTE
+- SINT
+- UINT
+- WORD
+- INT
+- DINT
+- UDINT
+- DWORD
+- TIME
+- TOD
+- TIME_OF_DAY
+- DT
+- DATE_AND_TIME
+- DATE
+- REAL
+- LREAL
+- ULINT
+- LWORD
+- LINT
+
+Also, when using `fromString()`, the ALIAS data type is supported.
+
+# Documentation
+
+## Defining data types
+
+Note: It's much easier to use the `fromString()` way. See next chapter.
+
+
+Including the library with the following:
+```js
+const iec = require('iec-61131-3')
+```
+
+**STRUCT**
+```js
+/*
+  TYPE ST_Struct :
+  STRUCT
+    variable1: INT;
+    variable2: REAL;
+  END_STRUCT
+  END_TYPE
+*/
+const ST_Struct = iec.STRUCT({
+  variable1: iec.INT,
+  variable2: iec.REAL
+})
+```
+
+**UNION**
+
+All `UNION` members occupy the same memory, so size of the `UNION` = size of the biggest variable data type.
+
+```js
+/*
+  TYPE U_Union :
+  UNION
+    variable1: INT;
+    variable2: REAL;
+  END_UNION
+  END_TYPE
+*/
+const U_Union = iec.UNION({
+  variable1: iec.INT,
+  variable2: iec.REAL
+})
+```
+**ARRAY**
+
+Single-dimensional array
+```js
+//singleDimension : ARRAY[0..9] OF INT;
+const singleDimension = iec.ARRAY(iec.INT, 10)
+```
+Multi-dimensional array
+```js
+//multiDimension : ARRAY[0..1, 0..9] OF INT;
+const multiDimension = iec.ARRAY(iec.INT, [2, 10])
+```
+
+**ENUM**
+
+`ENUM` with default type (`INT`):
+```js
+/*
+  TYPE E_Enum :
+  (
+    member0 := 0,
+    member1,
+    member2,
+    member100 := 100
+  );
+  END_TYPE
+*/
+const E_Enum = iec.ENUM({
+  member0: 0,
+  member1: 1,
+  member2: 2,
+  member100: 100
+})
+```
+
+`ENUM` with specific type (like `DWORD`):
+```js
+/*
+  TYPE E_Enum :
+  (
+    member0 := 0
+  ) DWORD;
+  END_TYPE
+*/
+const E_Enum = iec.ENUM({
+  member0: 0
+}, iec.DWORD)
+```
+
+**STRING**
+
+Default length (80):
+```js
+//stringValue : STRING;
+const stringValue = iec.STRING()
+```
+
+Custom length:
+```js
+//stringValue : STRING(200);
+const stringValue = iec.STRING(200)
+```
+
+WSTRING
+Default length (80):
+```js
+//stringValue : WSTRING;
+const wstringValue = iec.WSTRING()
+```
+
+Custom length:
+```js
+//stringValue : WSTRING(200);
+const wstringValue = iec.WSTRING(200)
+```
+**BOOL**
+```js
+const BOOL = iec.BOOL
+```
+**USINT**
+```js
+const USINT = iec.USINT
+```
+**BYTE**
+```js
+const BYTE = iec.BYTE
+```
+**SINT**
+```js
+const SINT = iec.SINT
+```
+**UINT**
+```js
+const UINT = iec.UINT
+```
+**WORD**
+```js
+const WORD = iec.WORD
+```
+**INT**
+```js
+const INT = iec.INT
+```
+**DINT**
+```js
+const DINT = iec.DINT
+```
+**UDINT**
+```js
+const UDINT = iec.UDINT
+```
+**DWORD**
+```js
+const DWORD = iec.DWORD
+```
+**TIME**
+```js
+const TIME = iec.TIME
+```
+**TOD, TIME_OF_DAY**
+```js
+const TOD = iec.TOD
+const TIME_OF_DAY = iec.TIME_OF_DAY
+```
+**DT, DATE_AND_TIME, DATE**
+
+Epoch timestamp (seconds since 1970)
+
+**IMPORTANT NOTE:** At the moment, the value is not converted to Javascript `Date` object. This might change in future updates!!
+```js
+const DT = iec.DT
+const DATE_AND_TIME = iec.DATE_AND_TIME
+const DATE = iec.DATE
+```
+**REAL**
+```js
+const REAL = iec.REAL
+```
+**LREAL**
+```js
+const LREAL = iec.LREAL
+```
+**ULINT**
+
+NOTE: Requires `BigInt` support from Node.js
+```js
+const ULINT = iec.ULINT
+```
+**LWORD**
+
+NOTE: Requires `BigInt` support from Node.js
+```js
+const LWORD = iec.LWORD
+```
+**LINT**
+
+NOTE: Requires `BigInt` support from Node.js
+```js
+const LINT = iec.LINT
+```
+
+## Using `fromString()` automatic method
+
+The PLC data type declarations (STRUCT, UNION, ENUM, ALIAS) can be automatically converted to Javascript data type schemas.
+
+Single `STRUCT`:
+```js
+const ST_Struct = iec.fromString(`
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_Struct:
+    STRUCT
+    variable1: INT;
+  variable2: REAL;
+  END_STRUCT
+  END_TYPE
+`)
+```
+
+Single `ENUM`:
+```js
+const E_Enum = iec.fromString(`
+  {attribute 'qualified_only'}
+  {attribute 'strict'}
+  TYPE E_Enum :
+  (
+    member0 := 0,
+    member1,
+    member2,
+    member100 := 100
+  );
+  END_TYPE
+`)
+```
+
+`STRUCT` that depends on another `STRUCT` and also on `ENUM`:
+```js
+const ST_Struct = iec.fromString(`
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_Struct :
+  STRUCT
+    StructValue: ST_Struct2;
+    EnumValue: E_Enum;
+  END_STRUCT
+  END_TYPE
+
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_Struct2 :
+  STRUCT
+    StringValue: STRING();
+  END_STRUCT
+  END_TYPE
+
+  {attribute 'qualified_only'}
+  {attribute 'strict'}
+  TYPE E_Enum :
+  (
+    member0 := 0,
+    member1,
+    member2,
+    member100 := 100
+  );
+  END_TYPE
+`, 'ST_Struct') //NOTE 2nd parameter (= top-level data type / desired return value)
+```
+
+Providing already defined data types and also using `ALIAS` (`ST_Struct2` is used with alias `MyStruct2Alias`)
+```js
+const ST_Struct2 = iec.STRUCT({
+  StringValue: iec.STRING()
+})
+
+const E_Enum = iec.ENUM({
+  member0: 0,
+  member1: 1,
+  member2: 2,
+  member100: 100
+})
+
+const ST_Struct = iec.fromString(`
+  TYPE MyStruct2Alias : ST_Struct2; END_TYPE
+
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_Struct :
+  STRUCT
+    StructValue: MyStruct2Alias;
+    EnumValue: E_Enum;
+  END_STRUCT
+  END_TYPE`,
+  'ST_Struct', //NOTE 2nd parameter (= top-level data type / desired return value)
+  { ST_Struct2, E_Enum } //NOTE 3rd parameter ( = provided data types)
+) 
+```
+
+
+
 
 # Examples
 
-## Manually providing the data types
+## Manually creating the data type schema
 
-**Note:** This example does not care how to data is written or read. It's left out of this example.
+Let's assume that the PLC struct definitions are as follows:
 
-
-The PLC struct definitions are as follows:
+ST_IEC_Example:
 ```
 {attribute 'pack_mode' := '1'}
 TYPE ST_IEC_Example :
 STRUCT
-	Text 		: STRING(50) := 'Hello iec-61131-3 helper';
-	Decimal 	: REAL := 3.14159265359;
-	ArrayData	: ARRAY[0..9] OF INT := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-	StructData	: ST_IEC_Example2;
+	Text        : STRING(50) := 'Hello iec-61131-3 helper';
+	Decimal     : REAL := 3.14159265359;
+	ArrayData   : ARRAY[0..9] OF INT := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+	StructData  : ST_IEC_Example2;
 END_STRUCT
 END_TYPE
 ```
+ST_IEC_Example2:
 ```
 {attribute 'pack_mode' := '1'}
 TYPE ST_IEC_Example2 :
 STRUCT
-	Text 		: STRING(50) := 'Cheers from second struct';
+	Text  : STRING(50) := 'Cheers from second struct';
 END_STRUCT
 END_TYPE
 
 ```
 
-Javascript code:
+Then we can define the same schema in Javascript code:
 ```js
 const iec = require('iec-61131-3')
 
-//Creating a IEC data type schema matchin PLC datatype ST_Example
+//Creating a IEC data type schema matching the PLC datatype ST_Example
 const ST_Example = iec.STRUCT({
   Text: iec.STRING(50),
   Decimal: iec.REAL,
@@ -150,6 +486,24 @@ console.log(converted)
 */
 ```
 
+We could also define structs separatelyindependsently:
+
+```js
+const iec = require('iec-61131-3')
+
+//ST_Example2 schema
+const ST_Example2 = iec.STRUCT({
+  Text: iec.STRING(50)
+})
+
+//ST_Example schema
+const ST_Example = iec.STRUCT({
+  Text: iec.STRING(50),
+  Decimal: iec.REAL,
+  ArrayData: iec.ARRAY(iec.INT, 10),
+  StructData: ST_Example2
+})
+```
 
 ## Automatic conversion from PLC declaration
 

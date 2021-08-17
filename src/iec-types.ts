@@ -23,37 +23,59 @@ SOFTWARE.
 */
 
 import type {
-  IecType,
-  StructChildren
+  EnumDataType,
+  IecType
 } from './types/types'
 
 import * as handler from './iec-type-handler'
 
 /**
- * IEC 61131-3 type: STRUCT
- * Provide struct children as object
+ * IEC 61131-3 type: STRUCT - Handles STRUCT data type, provide struct children as object
+ *
+ * @param children Children variables as IEC object, like: `{intVal: INT, boolVal: BOOL, structVal: STRUCT({...})}`
+ * @returns IecType object
  */
-export const STRUCT = (children: StructChildren): handler.STRUCT => new handler.STRUCT(children)
+export const STRUCT = (children?: Record<string, IecType | never>): handler.STRUCT => new handler.STRUCT(children)
 
 /**
- * IEC 61131-3 type: ARRAY
- * Handles 1..3 dimensional arrays
+ * IEC 61131-3 type: UNION - Handles UNION data type, provide union children as object
+ * 
+ * @param children Children variables as IEC object, like: `{intVal: INT, boolVal: BOOL, structVal: STRUCT({...})}`
+ * @returns IecType object
+ */
+export const UNION = (children?: Record<string, IecType | never>): handler.UNION => new handler.UNION(children)
+
+/**
+ * IEC 61131-3 type: ARRAY - Handles 1..3 dimensional arrays.
  *
- * @param dataType Data type of the array (example: iec.INT)
- * @param dimensions If 1-dimensional array: Array dimension (size) as number. If multi-dimensional array, array dimensions as array (like [1, 10, 5])
+ * Example with 1-dimensional INT array of 10 values: `ARRAY(INT, 10)`
+
+ * Example with 2-dimensional REAL array of 2*5 values: `ARRAY(REAL, [2, 5])`
+ *
+ * @param dataType Data type of the array (example: INT)
+ * @param dimensions Array dimension as number (if 1-dimensional array). If multi-dimensional, array dimensions as array of numbers (like `[2, 5]`)
  */
 export const ARRAY = (dataType: IecType, dimensions: number | number[]): handler.ARRAY => new handler.ARRAY(dataType, dimensions)
 
 /**
- * IEC 61131-3 type: STRING
- * Default length 80 characters
+ * IEC 61131-3 type: ENUM
+ * Handles enumeration types with different data types
+ * 
+ * @param definition Enumeration definition as object (like `{key1: 1, key2: 2}`)
+ * @param dataType Data type of the ENUM (default is iec.INT)
+ * @returns 
+ */
+export const ENUM = (definition: Record<string, number>, dataType?: EnumDataType): handler.ENUM => new handler.ENUM(definition, dataType)
+
+
+/**
+ * IEC 61131-3 type: STRING - Default length 80 characters
  * @param length Length of the string variable (similar as in the PLC), default is 80
  */
 export const STRING = (length?: number): handler.STRING => new handler.STRING(length)
 
 /**
- * IEC 61131-3 type: WSTRING
- * Default length 80 characters
+ * IEC 61131-3 type: WSTRING - Default length 80 characters
  * @param length Length of the string variable (similar as in the PLC), default is 80
  */
 export const WSTRING = (length?: number): handler.WSTRING => new handler.WSTRING(length)
@@ -173,9 +195,3 @@ export const LWORD = new handler.LWORD()
  */
 export const LINT = new handler.LINT()
 
-
-
-
-
-
- 

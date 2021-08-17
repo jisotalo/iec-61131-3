@@ -23,6 +23,9 @@ SOFTWARE.
 */
 
 
+import * as types from '../iec-type-handler'
+
+
 /**
  * IEC data type interface
  */
@@ -56,39 +59,82 @@ export interface IecType {
 
 
 /**
- * Anything that can be under STRUCT data type
+ * Allowed enumeration values
  */
-export type StructChildren = Record<string, IecType> | Record<string, never> | undefined | null
+export type EnumValue = EnumEntry | string | number
 
+/**
+ * Enumeration value object
+ */
+export interface EnumEntry {
+  name: string | undefined,
+  value: number
+}
 
 
 /**
- * Extracted STRUCT definition from string declaration - used in fromString()
+ * Possible enumeration IEC data types
  */
-export interface ExtractedStruct {
+export type EnumDataType =
+  types.USINT
+  | types.BYTE
+  | types.SINT
+  | types.UINT
+  | types.WORD
+  | types.INT
+  | types.DINT
+  | types.UDINT
+  | types.DWORD
+  | types.ULINT
+  | types.LWORD
+  | types.LINT
+
+
+/**
+ * Different data type units (DUT) as enumeration
+ */
+export enum dataTypeUnit {
+  STRUCT = 'STRUCT',
+  UNION = 'UNION',
+  ENUM = 'ENUM',
+  ALIAS = 'ALIAS'
+}
+
+/**
+ * Extracted data type unit (DUT) definition from string declaration
+ * Contains extracted data for STRUCT, UNION, ENUM or ALIAS
+ */
+export interface ExtractedType {
   /**
-   * Data type of the struct as string (like ST_Example)
+   * Data type unit type (STRUCT, UNION, ENUM or ALIAS)
    */
-  dataType: string,
+  type: dataTypeUnit,
 
   /**
-   * Array of extracted children variables of the struct (names and data types as string)
+   * Name of the type as string (like ST_Example, E_Enum)
    */
-  children: ExtractedStructVariable[],
+  name: string,
 
   /**
-   * Resolved struct children variable declarations (names and resolved IEC data types)
-   * Note: This might be undefined if data type is not yet resolved (like struct that contains structs)
+   * Extracted content of the data type unit
+   * Depends on type
    */
-  resolved?: Record<string, IecType>,
+  content: ExtractedTypeVariable[] | ExtractedEnum | ExtractedAlias
+
+  /**
+   * Resolved IEC data type (undefined if not yet resolved)
+   */
+  resolved?: IecType,
 }
 
 
 
+
 /**
- * Extracted STRUCT child variable definition from string declaration - used in fromString()
+ * Extracted STRUCT or UNION child variable definition from string declaration
+ * Example: In STRUCT "value: BOOL" --> {name: "value", dataType: "BOOL"}
  */
-export interface ExtractedStructVariable {
+export interface ExtractedTypeVariable {
   /**
    * Variable name
    */
@@ -98,4 +144,37 @@ export interface ExtractedStructVariable {
    * Variable data type as string
    */
   dataType: string
+}
+
+
+/**
+ * Extracted ENUM definition
+ */
+export interface ExtractedEnum {
+  /**
+   * ENUM data type as string
+   */
+
+  dataType: string,
+  /**
+   * ENUM members (name and value)
+   */
+  content: Record<string, number>,
+
+  /**
+   * Resolved IEC data type (undefined if not yet resolved)
+   */
+  resolved?: IecType,
+}
+
+export interface ExtractedAlias {
+  /**
+   * ALIAS data type as string
+   */
+  dataType: string,
+
+  /**
+   * Resolved IEC data type (undefined if not yet resolved)
+   */
+  resolved?: IecType,
 }

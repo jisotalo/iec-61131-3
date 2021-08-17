@@ -1,7 +1,7 @@
 {
   "name": "iec-61131-3",
-  "version": "0.2.0",
-  "description": "IEC 61131-3 data types",
+  "version": "1.0.0",
+  "description": "IEC 61131-3 PLC data type helper for Node.js",
   "main": "./dist/iec-61131-3.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
