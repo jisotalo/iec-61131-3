@@ -28,7 +28,8 @@ import type {
   EnumDataType,
   EnumEntry,
   EnumValue,
-  IecType
+  IecType,
+  IteratedIecType
 } from './types/types'
 
 
@@ -38,11 +39,73 @@ import type {
 abstract class TypeBase implements Partial<IecType> {
   type = ''
   byteLength = 0
+
+  /**
+   * Iterator for iterating all items and their children
+   * like for(const type of schema)
+   */
+  public *[Symbol.iterator](): IterableIterator<IteratedIecType> {
+    let startIndex = 0;
+
+    //Helper recursive function
+    function* iterate(dt: IecType): IterableIterator<IteratedIecType> {
+      if (dt.children === undefined) {
+        yield {
+          name: undefined,
+          startIndex,
+          type: dt
+        }
+        startIndex += dt.byteLength;
+      } else {
+        for (const name in dt.children) {
+          const type = dt.children[name]
+
+          if (type.children !== undefined) {
+            //There are children -> go deeper
+            yield* iterate(type)
+          } else {
+            yield {
+              name,
+              startIndex,
+              type
+            }
+            startIndex += type.byteLength;
+          }
+        }
+      }
+    }
+
+    yield * iterate(this as unknown as IecType)
+  }
+
+  public *variableIterator(): IterableIterator<IteratedIecType> {
+    yield* this[Symbol.iterator]();
+  }
+
+  public *elementIterator(): IterableIterator<IteratedIecType> {
+    function* iterateArrayLevel(dt: ARRAY, startIndex: number, name?: string): IterableIterator<IteratedIecType> {
+      for (let i = 0; i < dt.totalSize; i++) {
+        if (dt.dataType instanceof ARRAY) {
+          yield* iterateArrayLevel(dt.dataType, startIndex + dt.dataType.byteLength * i, `${name}[${i}]`)
+        } else {
+          yield {
+            name: `${name}[${i}]`,
+            startIndex: startIndex + dt.dataType.byteLength * i,
+            type: dt.dataType
+          }
+        }
+      }
+    }
+
+    for (const variable of this) {
+      if (variable.type instanceof ARRAY) {
+        yield* iterateArrayLevel(variable.type, variable.startIndex, variable.name)
+      } else {
+        yield variable
+      }
+    }
+  }
 }
-
-
-
-
 
 /**
  * IEC 61131-3 type: STRUCT
@@ -68,7 +131,6 @@ export class STRUCT extends TypeBase implements IecType {
       this.byteLength += this.children[key].byteLength
     }
   }
-
 
   convertToBuffer(data: Record<string, unknown>): Buffer {
     if (!data)
