@@ -41,8 +41,8 @@ abstract class TypeBase implements Partial<IecType> {
   byteLength = 0
 
   /**
-   * Iterator for iterating all items and their children
-   * like for(const type of schema)
+   * Shorthand for variableIterator()
+   * --> for(const variable of dataType) {...}
    */
   public *[Symbol.iterator](): IterableIterator<IteratedIecType> {
     let startIndex = 0;
@@ -78,10 +78,24 @@ abstract class TypeBase implements Partial<IecType> {
     yield * iterate(this as unknown as IecType)
   }
 
-  public *variableIterator(): IterableIterator<IteratedIecType> {
+  /**
+   * Iterator for looping through all variables in memory order
+   * NOTE: Array variable is _one_ variable, see elementIterator() for looping each array element
+   * 
+   * Usage: for(const variable of dataType.variableIterator()) {...}
+   * Shorthand for this is: for(const variable of dataType) {...}
+   */
+  public *variableIterator(): IterableIterator<IteratedIecType> { 
     yield* this[Symbol.iterator]();
   }
 
+  /**
+   * Iterator for looping through all variables (and their array elements) in memory order
+   * NOTE: Each array element is yield separately unlike with variableIterator()
+   * 
+   * Usage: for(const variable of dataType.elementIterator()) {...}
+   * 
+   */
   public *elementIterator(): IterableIterator<IteratedIecType> {
     function* iterateArrayLevel(dt: ARRAY, startIndex: number, name?: string): IterableIterator<IteratedIecType> {
       for (let i = 0; i < dt.totalSize; i++) {
