@@ -13,13 +13,10 @@ Inspiration from [iecstruct](https://www.npmjs.com/package/iecstruct) project, h
 
 # Project status
 
-This project is in early stage. There is still some error handling missing.
-
 Things to do
 - Adding more examples to README
-- Example how to use this library with CODESYS systems
 - Updating `fromString()` to support CONSTANTs (for constant sized arrays etc.)
-- Adding supports for different pack-modes (now only pack-mode 1)
+- Updating `fromString()` to support network variable lists (just a helper for Codesys systems)
 - Adding checks if Node.js version has BigInt support
 - Adding more error checking
 - Adding TypeScript type/interface definition generator
@@ -31,14 +28,14 @@ Things to do
 - [IMPORTANT NOTE](#important-note)
 - [Available data types](#available-data-types)
 - [Documentation](#documentation)
-  * [Defining data types](#defining-data-types)
-  * [Using `fromString()` automatic method](#using--fromstring----automatic-method)
+  - [Defining data types](#defining-data-types)
+  - [Using `fromString()` automatic method](#using-fromstring-automatic-method)
 - [Examples](#examples)
-  * [Manually creating the data type schema](#manually-creating-the-data-type-schema)
-  * [Automatic conversion from PLC declaration](#automatic-conversion-from-plc-declaration)
-    + [Single struct](#single-struct)
-    + [Multiple structs - Providing all data types at once](#multiple-structs---providing-all-data-types-at-once)
-    + [Multiple structs - Providing data types separately](#multiple-structs---providing-data-types-separately)
+  - [Manually creating the data type schema](#manually-creating-the-data-type-schema)
+  - [Automatic conversion from PLC declaration](#automatic-conversion-from-plc-declaration)
+- [Iterating variables](#iterating-variables)
+  - [Iterating variables](#iterating-variables)
+  - [Iterating elements (variables and array elements)](#iterating-elements-variables-and-array-elements)
 - [License](#license)
 
 # Installing
@@ -838,11 +835,219 @@ console.log(obj)
 
 ```
 
+# Iterating variables
+Since version 1.1.0 it is possible to iterate through data type variables and elements more easily.
+
+The iterators return each variable name (if any), starting index in raw data `Buffer` and data type. This info can be used to extract value for each variable from data buffer.
+
+NOTE: Compare iterating arrays with following examples.
+
+## Iterating variables
+```js
+const iec = require('iec-61131-3')
+
+const ST_Iterating_Example = iec.fromString(`
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_IEC_Example :
+  STRUCT
+    Text 				: STRING(50) := 'Hello iec-61131-3 helper';
+    Decimal 			: REAL := 3.14159265359;
+    ArrayData			: ARRAY[0..9] OF INT := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    MultiDimArrayData	: ARRAY[0..1, 0..2] OF INT := [1, 2, 3, 4, 5, 6];
+  END_STRUCT
+  END_TYPE
+
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_Iterating_Example :
+  STRUCT
+    Text 		: STRING(50) := 'Cheers';
+    Struct	: ST_IEC_Example;
+  END_STRUCT
+  END_TYPE
+`, 'ST_Iterating_Example')
+
+for (const variable of ST_Iterating_Example) {
+  //Or you can use for (const variable of ST_IEC_Example2.variableIterator()) {...}
+  console.log('Variable:', variable);
+}
+
+/*
+Console output:
+
+Variable: {
+  name: 'Text',
+  startIndex: 0,
+  type: STRING { type: 'STRING', byteLength: 51 }
+}
+Variable: {
+  name: 'Text',
+  startIndex: 51,
+  type: STRING { type: 'STRING', byteLength: 51 }
+}
+Variable: {
+  name: 'Decimal',
+  startIndex: 102,
+  type: REAL { type: 'REAL', byteLength: 4 }
+}
+Variable: {
+  name: 'ArrayData',
+  startIndex: 106,
+  type: ARRAY {
+    type: 'ARRAY',
+    byteLength: 20,
+    dimensions: [ 10 ],
+    totalSize: 10,
+    dataType: INT { type: 'INT', byteLength: 2 }
+  }
+}
+Variable: {
+  name: 'MultiDimArrayData',
+  startIndex: 126,
+  type: ARRAY {
+    type: 'ARRAY',
+    byteLength: 12,
+    dimensions: [ 2, 3 ],
+    totalSize: 6,
+    dataType: INT { type: 'INT', byteLength: 2 }
+  }
+}
+*/
+``` 
+
+## Iterating elements (variables and array elements)
+
+Note: At the moment indexes in names are 0-based (not matching to PLC declaration).
+
+```js
+const iec = require('iec-61131-3')
+const ST_Iterating_Example = iec.fromString(`
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_IEC_Example :
+  STRUCT
+    Text 				: STRING(50) := 'Hello iec-61131-3 helper';
+    Decimal 			: REAL := 3.14159265359;
+    ArrayData			: ARRAY[0..9] OF INT := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    MultiDimArrayData	: ARRAY[0..1, 0..2] OF INT := [1, 2, 3, 4, 5, 6];
+  END_STRUCT
+  END_TYPE
+
+  {attribute 'pack_mode' := '1'}
+  TYPE ST_Iterating_Example :
+  STRUCT
+    Text 		: STRING(50) := 'Cheers';
+    Struct	: ST_IEC_Example;
+  END_STRUCT
+  END_TYPE
+`, 'ST_Iterating_Example')
+
+for (const element of ST_Iterating_Example.elementIterator()) {
+  console.log('Element:', element);
+}
+/*
+Console output:
+
+Element: {
+  name: 'Text',
+  startIndex: 0,
+  type: STRING { type: 'STRING', byteLength: 51 }
+}
+Element: {
+  name: 'Text',
+  startIndex: 51,
+  type: STRING { type: 'STRING', byteLength: 51 }
+}
+Element: {
+  name: 'Decimal',
+  startIndex: 102,
+  type: REAL { type: 'REAL', byteLength: 4 }
+}
+Element: {
+  name: 'ArrayData[0]',
+  startIndex: 106,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[1]',
+  startIndex: 108,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[2]',
+  startIndex: 110,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[3]',
+  startIndex: 112,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[4]',
+  startIndex: 114,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[5]',
+  startIndex: 116,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[6]',
+  startIndex: 118,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[7]',
+  startIndex: 120,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[8]',
+  startIndex: 122,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'ArrayData[9]',
+  startIndex: 124,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'MultiDimArrayData[0]',
+  startIndex: 126,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'MultiDimArrayData[1]',
+  startIndex: 128,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'MultiDimArrayData[2]',
+  startIndex: 130,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'MultiDimArrayData[3]',
+  startIndex: 132,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'MultiDimArrayData[4]',
+  startIndex: 134,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+Element: {
+  name: 'MultiDimArrayData[5]',
+  startIndex: 136,
+  type: INT { type: 'INT', byteLength: 2 }
+}
+*/
+```
 # License
 
 Licensed under [MIT License](http://www.opensource.org/licenses/MIT) so commercial use is possible. Please respect the license, linking to this page is also much appreciated.
 
-Copyright (c) 2021 Jussi Isotalo <<j.isotalo91@gmail.com>>
+Copyright (c) Jussi Isotalo <<j.isotalo91@gmail.com>>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -70,9 +70,6 @@ const nonComplexTypes = [
  */
 const typeRegEx = new RegExp(/type\s*(\w*)\s*[:]*\s*(struct|union|\(|:)\s*(.*?)(?:end_struct|end_union|;|\)\s*([^\s]*?)\s*;)\s*end_type/gis)
 
-
-
-
 /**
  * RegExp pattern for matching STRUCT variables (children)
  */
@@ -82,7 +79,6 @@ const structVariableRegEx = new RegExp(/(\w+)\s*:\s*([^:;]*)/gis)
  * RegExp pattern for matching ENUM
  */
 const enumRegEx = new RegExp(/\s*(.+?)\s*(?::=\s*(.*?)\s*)*(?:,|$)/gis)
-
 
 /**
  * RegExp pattern for matching STRING or WSTRING types
@@ -95,22 +91,16 @@ const enumRegEx = new RegExp(/\s*(.+?)\s*(?::=\s*(.*?)\s*)*(?:,|$)/gis)
  */
 const stringRegEx = new RegExp('^(STRING|WSTRING)([\\[\\(](.*?)[\\)\\]])*$', 'i')
 
-
 /**
  * RegExp pattern for matching ARRAY types
  */
 const arrayRegEx = new RegExp(/array\s*[\[(]+(.*?)[\])]\s*of\s*([^:;]*)/gis)
-
 
 /**
  * RegExp pattern for matching ARRAY dimensions
  * Input: "0..10", "-5..5, 0..2" etc
  */
 const arrayDimensionsRegEx = new RegExp(/(?:\s*(?:([^\.,\s]*)\s*\.\.\s*([^,\s]*))\s*)/gis)
-
-
-
-
 
 /**
  * Extracts struct declarations from given string containing one or multiple TYPE...END_TYPE declarations
@@ -180,9 +170,6 @@ const extractTypeDeclarations = (declarations: string): ExtractedType[] => {
   return extractedTypes
 }
 
-
-
-
 /**
  * Extracts STRUCT/UNION variables (children) from given declaration string
  * @param declaration 
@@ -211,9 +198,6 @@ const extractTypeVariables = (declaration: string): ExtractedTypeVariable[] => {
 
   return extractedVariables
 }
-
-
-
 
 /**
  * Extracts ENUM from given declaration string
@@ -273,9 +257,6 @@ const extractEnum = (declaration: string, dataType?: string): ExtractedEnum => {
   return extractedEnum
 }
 
-
-
-
 /**
  * Resolves given string PLC type declarations to IEC data types
  * @param declarations 
@@ -314,10 +295,6 @@ export const resolveIecTypes = (declarations: string, topLevelDataType?: string,
 
   return returnVal.resolved as IecType
 }
-
-
- 
-
 
 /**
  * Resolves single IEC data type unit from given parsed ExtractedType object
@@ -363,10 +340,6 @@ const resolveIecDataTypeUnit = (type: ExtractedType, types: ExtractedType[], pro
       throw new Error(`Problem resolving IEC data type unit (DUT). Unknown type: ${type.type}`)
   }
 }
-
-
-
-
 
 /**
  * Resolves a single variable data type (string) to IEC data type
@@ -431,7 +404,6 @@ const resolveIecVariable = (dataType: string, types: ExtractedType[], providedTy
     }
     return iecTypes.ARRAY(type, dimensions)
   }
-
 
   //Data type unit (DUT) like struct, enum etc. (or unknown)
   const dataTypeUnit = types.find(type => type.name.toLowerCase() == dataType.toLowerCase())

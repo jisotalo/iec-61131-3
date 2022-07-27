@@ -21,20 +21,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
-import type {
-  IecType
-} from './types/types'
-
 import { resolveIecTypes } from './iec-resolver'
+import type { IecType } from './types/types'
 
-
+/**
+ * Exporting IecType interface
+ */
+export type { IecType } from './types/types'
 
 /**
  * Exporting all IEC data types
  */
 export * from './iec-types'
-
 
 /**
  * Converts given PLC data type declaration(s) to IEC data type. 

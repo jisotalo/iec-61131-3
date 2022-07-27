@@ -29,7 +29,7 @@ import * as types from '../iec-type-handler'
 /**
  * IEC data type interface
  */
-export interface IecType {
+export interface IecType extends Iterable<IteratedIecType> {
   /**
    * Name of the IEC data type as string
    */
@@ -55,6 +55,29 @@ export interface IecType {
    * Returns default (empty) Javascript object representing the IEC type
    */
   getDefault: () => Record<string, unknown> | unknown
+
+  /**
+   * Children of the data type (if any)
+   */
+  children?: Record<string, IecType | never>
+
+  /**
+   * Iterator for looping through all variables in memory order
+   * NOTE: Array variable is _one_ variable, see elementIterator() for looping each array element
+   * 
+   * Usage: for(const variable of dataType.variableIterator()) {...}
+   * Shorthand for this is: for(const variable of dataType) {...}
+   */
+  variableIterator: () => IterableIterator<IteratedIecType>
+
+  /**
+   * Iterator for looping through all variables (and their array elements) in memory order
+   * NOTE: Each array element is yield separately unlike with variableIterator()
+   * 
+   * Usage: for(const variable of dataType.elementIterator()) {...}
+   * 
+   */
+  elementIterator: () => IterableIterator<IteratedIecType>
 }
 
 
@@ -167,6 +190,9 @@ export interface ExtractedEnum {
   resolved?: IecType,
 }
 
+/**
+ * Extracted ALIAS definition
+ */
 export interface ExtractedAlias {
   /**
    * ALIAS data type as string
@@ -177,4 +203,24 @@ export interface ExtractedAlias {
    * Resolved IEC data type (undefined if not yet resolved)
    */
   resolved?: IecType,
+}
+
+/**
+ * Return value when iterating through types
+ */
+export interface IteratedIecType {
+  /**
+   * Variable name
+   */
+  name?: string,
+
+  /**
+   * Start index
+   */
+  startIndex: number,
+
+  /**
+   * Data type
+   */
+  type: IecType
 }
